@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Giveaway Tracker - Pro Hunter</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e2f;
+            color: #fff;
+            padding: 40px 20px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { font-size: 28px; color: #ffb86c; margin-bottom: 5px; text-transform: uppercase; }
+        .subtitle { color: #8be9fd; margin-bottom: 25px; font-style: italic; font-size: 14px; }
+
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 15px;
+            background-color: #2a2a40;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid #3d3d5c;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .input-box { display: flex; flex: 1; min-width: 250px; gap: 10px; }
+        .link-input { flex: 1; padding: 12px 15px; border-radius: 8px; border: 1px solid #50fa7b; background-color: #1e1e2f; color: #fff; font-size: 14px; outline: none; }
+        .name-input { width: 250px; padding: 12px 15px; border-radius: 8px; border: 1px solid #ff79c6; background-color: #1e1e2f; color: #fff; font-size: 14px; outline: none; font-weight: bold; }
+        .link-input::placeholder, .name-input::placeholder { color: #6272a4; font-weight: normal; }
+
+        .btn-main { padding: 12px 20px; background-color: #ffb86c; color: #282a36; font-size: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-main:hover { background-color: #ff9e3d; }
+        .btn-update-all { background-color: #ff5555; color: white; padding: 12px 40px; }
+        .btn-update-all:hover { background-color: #e24444; }
+
+        /* Thanh auto refresh */
+        .live-bar {
+            display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center;
+            width: 100%; max-width: 800px; margin-bottom: 25px;
+        }
+        .live-dot { width: 10px; height: 10px; border-radius: 50%; background: #6272a4; display: inline-block; margin-right: 6px; }
+        .live-dot.on { background: #50fa7b; box-shadow: 0 0 8px #50fa7b; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 50% { opacity: 0.35; } }
+        .live-label { font-size: 13px; color: #8be9fd; }
+        .select-interval { padding: 10px 12px; border-radius: 8px; background: #1e1e2f; color: #fff; border: 1px solid #8be9fd; font-size: 13px; outline: none; }
+        .toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #f8f8f2; cursor: pointer; }
+
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
+        .card { background-color: #2a2a40; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); border: 1px solid #3d3d5c; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #383a59; margin-bottom: 15px; padding-bottom: 10px; }
+        .card-title { font-size: 15px; font-weight: bold; color: #ff79c6; word-break: break-all; padding-right: 10px; }
+        .btn-delete { background: none; border: none; color: #ff5555; cursor: pointer; font-size: 16px; padding: 0; transition: 0.2s; }
+        .btn-delete:hover { color: #ff2a2a; transform: scale(1.1); }
+
+        .stat-box { background-color: #383a59; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .stat-label { font-size: 13px; color: #8be9fd; }
+        .stat-value { font-size: 15px; font-weight: bold; color: #f8f8f2; text-align: right; }
+        .countdown { font-variant-numeric: tabular-nums; font-family: Consolas, 'Courier New', monospace; }
+        .countdown.urgent { color: #ff5555; }
+
+        .highlight-box { background-color: rgba(80, 250, 123, 0.1); border: 1px solid rgba(80, 250, 123, 0.3); }
+        .highlight-label { color: #50fa7b; font-weight: bold; }
+        .highlight-value { color: #50fa7b; font-weight: bold; font-size: 14px; }
+        .detail-text { font-size: 11px; color: #8be9fd; display: block; margin-top: 4px; font-weight: normal; }
+        .updated-at { font-size: 11px; color: #6272a4; text-align: right; margin-top: 4px; }
+        .updated-at.stale { color: #ffb86c; }
+
+        .acc-list { text-align: right; line-height: 1.6; }
+        .stat-box-col { flex-direction: column; align-items: stretch; gap: 6px; }
+        .ticket-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #f8f8f2; }
+        .ticket-table th { background: rgba(80, 250, 123, 0.18); color: #50fa7b; font-weight: bold; padding: 7px 8px; border: 1px solid rgba(80, 250, 123, 0.35); text-align: center; }
+        .ticket-table td { padding: 6px 8px; border: 1px solid rgba(80, 250, 123, 0.25); text-align: center; word-break: break-word; font-weight: normal; }
+        .ticket-table td.acc-name { text-align: left; font-weight: bold; color: #8be9fd; }
+        .ticket-table td.zero { color: #6272a4; }
+        .ticket-table tr.total-row td { background: rgba(80, 250, 123, 0.12); font-weight: bold; color: #50fa7b; }
+        .ticket-note { font-size: 11px; color: #8be9fd; margin-top: 6px; text-align: right; font-weight: normal; }
+        .code-text { font-family: Consolas, 'Courier New', monospace; color: #f1fa8c; letter-spacing: 0.5px; word-break: break-all; }
+        .btn-copy { margin-left: 8px; padding: 4px 10px; border-radius: 6px; border: none; background: #bd93f9; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-copy:hover { background: #a370f7; }
+        .btn-copy.copied { background: #50fa7b; color: #282a36; }
+
+        .status-loading { color: #f1fa8c; font-style: italic; }
+        .status-error { color: #ff5555; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn { flex: 1; padding: 10px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; border: none; text-decoration: none; transition: 0.2s; }
+        .btn-refresh { background-color: #50fa7b; color: #282a36; }
+        .btn-refresh:hover { background-color: #40c563; }
+        .btn-link { background-color: #bd93f9; color: #fff; }
+        .btn-link:hover { background-color: #a370f7; }
+
+        /* Điện thoại: thu gọn lề, ô nhập full chiều ngang, không bị tràn ngang */
+        @media (max-width: 480px) {
+            body { padding: 24px 12px; }
+            h1 { font-size: 22px; text-align: center; }
+            .control-group { padding: 14px; }
+            .control-group > .input-box { flex: 1 1 100% !important; min-width: 100% !important; }
+            .name-input { width: 100%; }
+            .live-bar { gap: 10px; }
+            .card { padding: 14px; }
+            .stat-label { font-size: 12px; }
+            .ticket-table th, .ticket-table td { padding: 5px 4px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Giao Diện Theo Dõi Tổng Hợp</h1>
+    <div class="subtitle">Tính Tỉ lệ thắng siêu việt (Dựa trên số Người Tham Gia)</div>
+
+    <div class="control-group">
+        <div class="input-box">
+            <input type="text" id="newLinkInput" class="link-input" placeholder="Dán link Giveaway mới...">
+            <button class="btn-main" onclick="addNewLink()">➕ Thêm Link</button>
+        </div>
+        <div class="input-box" style="flex: 0; min-width: auto; position: relative;">
+            <input type="text" id="usernameInput" class="name-input" value="HZAHT" placeholder="Nick 1, Nick 2, Nick 3..." onchange="saveUsername(); fetchAllData()" title="Nhập các nick cách nhau bằng dấu phẩy">
+        </div>
+    </div>
+
+    <div class="live-bar">
+        <label class="toggle">
+            <input type="checkbox" id="autoToggle" onchange="onAutoSettingChange()" checked>
+            <span><span class="live-dot" id="liveDot"></span>Tự động cập nhật</span>
+        </label>
+        <select id="intervalSelect" class="select-interval" onchange="onAutoSettingChange()">
+            <option value="10">Mỗi 10 giây</option>
+            <option value="30" selected>Mỗi 30 giây</option>
+            <option value="60">Mỗi 1 phút</option>
+            <option value="300">Mỗi 5 phút</option>
+        </select>
+        <span class="live-label" id="nextRefreshLabel">---</span>
+        <button class="btn-main btn-update-all" onclick="fetchAllData()">🔄 Cập nhật tất cả</button>
+    </div>
+
+    <div class="container" id="tracker-container"></div>
+
+    <script>
+        let websites = [
+            "https://eryctriceps.club/020726",
+            "https://samz.club/010726",
+            "https://theasylum.club/010726",
+            "https://drewunboxing.club/010726",
+            "https://tooyumi.club/010826"
+        ];
+
+        // ===== Trạng thái theo từng card =====
+        let targetTimes = {};   // index -> timestamp (ms) kết thúc giveaway
+        let timeStatus = {};    // index -> text hiển thị khi không có mốc thời gian
+        let lastUpdated = {};   // index -> timestamp (ms) lần quét thành công gần nhất
+        let inFlight = {};      // index -> đang quét hay không (tránh chồng request)
+        let promoCodes = {};    // index -> mã code nhập GA (để nút Copy dùng)
+
+        function copyCode(index, btn) {
+            const code = promoCodes[index];
+            if (!code) return;
+            const done = () => {
+                const old = btn.innerText;
+                btn.innerText = 'Đã copy!';
+                btn.classList.add('copied');
+                setTimeout(() => { btn.innerText = old; btn.classList.remove('copied'); }, 1200);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
+            } else {
+                fallbackCopy(code, done);
+            }
+        }
+        function fallbackCopy(text, cb) {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); cb(); } catch (e) {}
+            document.body.removeChild(ta);
+        }
+
+        let autoTimer = null;
+        let nextRefreshAt = 0;
+
+        // ===== Bộ lọc đa ngôn ngữ (EN / ES / PT-BR / ES-AR / TR / AR) =====
+        const PROMO_WORDS = '(?:promo\\w*|c[oó]digo|cupom|cup[oó]n|code|kod\\w*|كود|الكود|الرمز|رمز|ترويجي\\w*)';
+        const CUR = '(R\\$|US\\$|\\$)';
+        const NUM = '([0-9][0-9.,]*)';
+
+        const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        const cleanNum = s => s.replace(/[.,]+$/, '');
+        const curSym = s => (/^R/i.test(s) ? 'R$' : '$');
+
+        // Giải mã ký tự HTML (&oacute; &nbsp; &aacute; ...) — trang Latin hay dùng, regex sẽ không khớp nếu để nguyên
+        function decodeEntities(s) {
+            const ta = document.createElement('textarea');
+            ta.innerHTML = s;
+            return ta.value;
+        }
+        // Bỏ dấu (ó -> o, ç -> c, dấu Ả Rập...) để bộ lọc không phụ thuộc cách gõ dấu
+        function foldAccents(s) {
+            return s.normalize('NFD').replace(/[̀-ًͯ-ٟ]/g, '');
+        }
+
+        // Đổi chuỗi tiền ("2", "10,50", "1,500") thành số
+        function parseAmount(s) {
+            if (!s) return null;
+            let v = String(s).replace(/[^0-9.,]/g, '');
+            if (v.includes(',') && v.includes('.')) v = v.replace(/,/g, '');
+            else if (v.includes(',')) v = /,\d{1,2}$/.test(v) ? v.replace(',', '.') : v.replace(/,/g, '');
+            const n = parseFloat(v);
+            return isNaN(n) ? null : n;
+        }
+        function fmtMoney(sym, n) { return sym + (Math.round(n * 100) / 100).toString(); }
+
+        // Bảng kiểu Excel: Tên acc | Số lượng vé đã vào | Tổng cost đã nạp
+        function buildTicketTable(rows, totalCount, gaTotal, minCost, maxTickets) {
+            const sym = minCost && minCost.startsWith('R$') ? 'R$' : '$';
+            const unit = parseAmount(minCost);
+            const costOf = c => unit === null ? '?' : fmtMoney(sym, c * unit);
+            const body = rows.map(r => {
+                const cls = r.count ? '' : ' class="zero"';
+                return `<tr><td class="acc-name">${esc(r.name)}</td>`
+                     + `<td${cls}>${r.count}${r.missing ? ' <small>(không thấy)</small>' : ''}</td>`
+                     + `<td${cls}>${costOf(r.count)}</td></tr>`;
+            }).join('');
+            const total = `<tr class="total-row"><td class="acc-name">TỔNG</td><td>${totalCount} / ${gaTotal}</td><td>${costOf(totalCount)}</td></tr>`;
+            const notes = [];
+            if (unit !== null) notes.push(`Cost/vé: ${minCost}`);
+            if (maxTickets !== null) notes.push(`Tối đa mỗi tài khoản: ${maxTickets} vé`);
+            const note = notes.length ? `<div class="ticket-note">${notes.join(' · ')}</div>` : '';
+            return `<table class="ticket-table"><thead><tr><th>Tên acc</th><th>Số lượng vé đã vào</th><th>Tổng cost đã nạp</th></tr></thead><tbody>${body}${total}</tbody></table>${note}`;
+        }
+
+        // Chuyển chữ số Ả Rập/Ba Tư (٠١٢...) sang 0-9 để regex đọc được
+        function normalizeDigits(s) {
+            return s.replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)
+                    .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x06F0);
+        }
+
+        // "Cost vé" = số tiền nạp tối thiểu (để nhận 1 vé), nằm cùng câu với mã promo.
+        // KHÔNG lấy số $ đầu tiên của trang vì đó thường là tổng giải thưởng (vd "$1,000").
+        const TOPUP_WORDS = '(?:recarg\\w*|recarreg\\w*|reabaste\\w*|saldo|balance|replenish|top[\\s-]*up|deposit\\w*|bakiye\\w*|yukle\\w*|رصيد|اشحن|شحن|ايداع|إيداع)';
+        const MONEY_A = CUR + '\\s*' + NUM;                                                     // $2, R$ 10
+        const MONEY_B = NUM + '\\s*(R\\$|US\\$|\\$|USD|BRL|reais|dolares?|dolar\\w*|دولار)';     // 10$, 10 USD
+        const WITH_WORDS = '(?:con|com|with|using|usando|ile|مع|باستخدام)';
+        const WITH_PROMO = '[^0-9$]{0,6}?\\s' + WITH_WORDS + '\\s[^0-9$]{0,20}?' + PROMO_WORDS;
+
+        function findMinCost(t) {
+            const specs = [
+                // 1) "<tiền> con/com/with ... código/promo" trong cùng một câu (vd "desde $2 con el código")
+                [MONEY_A + WITH_PROMO, 'A'],
+                [MONEY_B + WITH_PROMO, 'B'],
+                // 2) "<từ khoá nạp tiền> ... <tiền>" (vd "Recarga tu saldo desde $2")
+                [TOPUP_WORDS + '[^0-9$]{0,40}?' + MONEY_A, 'A'],
+                [TOPUP_WORDS + '[^0-9$]{0,40}?' + MONEY_B, 'B'],
+                // 3) dự phòng: "desde / a partir de / minimum ... <tiền>"
+                ['(?:desde|a\\s+partir\\s+de|m[ií]nimo|minimum|asgari|en\\s+az)\\s*' + MONEY_A, 'A'],
+            ];
+            for (const [src, order] of specs) {
+                const m = t.match(new RegExp(src, 'i'));
+                if (!m) continue;
+                const num = order === 'A' ? m[2] : m[1];
+                const cur = order === 'A' ? m[1] : m[2];
+                return (/^(R\$|reais|BRL)/i.test(cur) ? 'R$' : '$') + cleanNum(num);
+            }
+            return null;
+        }
+
+        // Mã code: token IN HOA có gạch nối + có số, ưu tiên token nằm ngay sau chữ "promo/código/kod/كود..."
+        function findPromoCode(t) {
+            const re = /\b[A-Z][A-Z0-9]+(?:-[A-Z0-9]+){1,4}\b/g;
+            const promoRe = new RegExp(PROMO_WORDS, 'i');
+            let fallback = null, m;
+            while ((m = re.exec(t)) !== null) {
+                const token = m[0];
+                if (token.length < 6 || !/\d/.test(token)) continue;
+                const before = t.slice(Math.max(0, m.index - 80), m.index);
+                if (promoRe.test(before)) return token;
+                if (!fallback && /-\d{4,8}$/.test(token)) fallback = token;
+            }
+            return fallback;
+        }
+
+        // Số vé tối đa mỗi tài khoản
+        function findMaxTickets(t) {
+            const TW = '(?:tickets?|boletos?|bilhetes?|entradas?|tiquetes?|bilet\\w*|تذكرة|تذاكر)';
+            let m = t.match(new RegExp('(?:maximum|m[aá]ximo|m[aá]x\\.?|maksimum|en\\s+fazla|up\\s+to|hasta|at[eé]|الحد\\s+ال[أا]قصى|حتى)\\s*(?:de\\s+)?(\\d{1,4})\\s*' + TW, 'i'));
+            if (m) return parseInt(m[1]);
+            m = t.match(/(\d{1,4})\s*bilet\w*\s*(?:kadar|maksimum)/i);
+            if (m) return parseInt(m[1]);
+            return null;
+        }
+
+        // ===== Lưu cài đặt =====
+        const savedLinks = localStorage.getItem('giveaway_links');
+        if (savedLinks) websites = JSON.parse(savedLinks);
+
+        const savedNames = localStorage.getItem('giveaway_names');
+        if (savedNames) document.getElementById('usernameInput').value = savedNames;
+
+        const savedAuto = localStorage.getItem('giveaway_auto');
+        if (savedAuto !== null) document.getElementById('autoToggle').checked = savedAuto === '1';
+
+        const savedInterval = localStorage.getItem('giveaway_interval');
+        if (savedInterval) document.getElementById('intervalSelect').value = savedInterval;
+
+        function saveLinks() { localStorage.setItem('giveaway_links', JSON.stringify(websites)); }
+        function saveUsername() { localStorage.setItem('giveaway_names', document.getElementById('usernameInput').value); }
+
+        // ===== Thêm / xóa link =====
+        function addNewLink() {
+            const inputEl = document.getElementById('newLinkInput');
+            let newUrl = inputEl.value.trim();
+            if (!newUrl) return alert("Bạn chưa nhập link!");
+            if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) newUrl = 'https://' + newUrl;
+            if (websites.includes(newUrl)) return alert("Link này đã có!");
+
+            websites.push(newUrl);
+            saveLinks();
+            inputEl.value = '';
+            initInterface();
+            fetchSingleData(websites.length - 1);
+        }
+
+        function removeLink(index) {
+            if (confirm("Xóa trang này khỏi danh sách?")) {
+                websites.splice(index, 1);
+                targetTimes = {}; timeStatus = {}; lastUpdated = {}; inFlight = {}; promoCodes = {};
+                saveLinks();
+                initInterface();
+                fetchAllData();
+            }
+        }
+
+        function initInterface() {
+            const container = document.getElementById('tracker-container');
+            if (websites.length === 0) {
+                container.innerHTML = '<div style="color: #6272a4;">Danh sách trống.</div>';
+                return;
+            }
+
+            container.innerHTML = websites.map((url, index) => {
+                const domain = url.replace('https://', '').replace(/\/$/, "");
+                return `
+                    <div class="card" id="card-${index}">
+                        <div>
+                            <div class="card-header">
+                                <div class="card-title">🌐 ${domain}</div>
+                                <button class="btn-delete" onclick="removeLink(${index})">❌</button>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-label">💰 Tổng giải thưởng</span>
+                                <span class="stat-value" id="prize-${index}">---</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-label">🎟️ Số vé còn lại</span>
+                                <span class="stat-value" id="tickets-${index}">---</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-label">💵 Cost vé</span>
+                                <span class="stat-value" id="mindeposit-${index}">---</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-label">🏷️ Mã code nhập GA</span>
+                                <span class="stat-value" id="code-${index}">---</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-label">⏳ Thời gian còn lại (realtime)</span>
+                                <span class="stat-value countdown" id="time-${index}">---</span>
+                            </div>
+                            <div class="stat-box highlight-box stat-box-col">
+                                <span class="stat-label highlight-label">👤 VÉ CỦA BẠN (đã vào / tổng vé GA)</span>
+                                <div class="stat-value highlight-value" id="mytickets-${index}" style="text-align:left;">---</div>
+                            </div>
+                            <div class="stat-box highlight-box">
+                                <span class="stat-label highlight-label">🎯 Tỉ lệ thắng (Theo Người)</span>
+                                <span class="stat-value highlight-value" id="winrate-${index}">---</span>
+                            </div>
+                            <div class="updated-at" id="updated-${index}">Chưa cập nhật</div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-refresh" onclick="fetchSingleData(${index})">🔄 Cập nhật</button>
+                            <a class="btn btn-link" href="${url}" target="_blank">🔗 Mở Trang</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ===== Định dạng thời gian =====
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function formatRemaining(diff) {
+            const totalH = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            return `${totalH}H ${pad(m)}M ${pad(s)}S`;
+        }
+
+        // ===== ĐỒNG HỒ ĐẾM NGƯỢC: chạy mỗi giây, không cần gọi lại trang =====
+        function tickCountdowns() {
+            const now = Date.now();
+            websites.forEach((url, index) => {
+                const el = document.getElementById(`time-${index}`);
+                if (!el) return;
+                // Đang quét thì để nguyên chữ "Đang quét..."
+                if (el.classList.contains('status-loading') || el.classList.contains('status-error')) return;
+
+                const target = targetTimes[index];
+                if (target) {
+                    const diff = target - now;
+                    if (diff > 0) {
+                        el.innerText = formatRemaining(diff);
+                        el.classList.toggle('urgent', diff < 3600000); // dưới 1 giờ thì đỏ
+                    } else {
+                        el.innerText = "Đã kết thúc";
+                        el.classList.remove('urgent');
+                    }
+                } else if (timeStatus[index]) {
+                    el.innerText = timeStatus[index];
+                }
+
+                // Hiển thị "cập nhật X giây trước"
+                const upEl = document.getElementById(`updated-${index}`);
+                if (upEl && lastUpdated[index]) {
+                    const ago = Math.floor((now - lastUpdated[index]) / 1000);
+                    const agoText = ago < 60 ? `${ago} giây trước` : `${Math.floor(ago / 60)} phút ${ago % 60}s trước`;
+                    upEl.innerText = `Dữ liệu cập nhật: ${agoText}`;
+                    const intervalSec = parseInt(document.getElementById('intervalSelect').value);
+                    upEl.classList.toggle('stale', ago > intervalSec * 3);
+                }
+            });
+
+            // Hiển thị đếm ngược đến lần quét tiếp theo
+            const label = document.getElementById('nextRefreshLabel');
+            if (document.getElementById('autoToggle').checked && nextRefreshAt) {
+                const left = Math.max(0, Math.ceil((nextRefreshAt - now) / 1000));
+                label.innerText = `Quét lại sau ${left}s`;
+            } else {
+                label.innerText = 'Tự động: tắt';
+            }
+        }
+
+        // ===== TẢI TRANG GIVEAWAY =====
+        // Ưu tiên đi qua proxy của Netlify (/api/fetch) để không bị chặn CORS.
+        // Nếu proxy không có (vd mở file ở máy) thì thử fetch trực tiếp (cần extension Allow CORS).
+        async function fetchPage(url) {
+            let proxyInfo = '';
+            try {
+                const r = await fetch(`/api/fetch?url=${encodeURIComponent(url)}&_t=${Date.now()}`, { cache: 'no-store' });
+                if (r.ok) return await r.text();
+                proxyInfo = `proxy trả về ${r.status}`;
+            } catch (e) {
+                proxyInfo = 'không gọi được proxy';
+            }
+            try {
+                const sep = url.includes('?') ? '&' : '?';
+                const r2 = await fetch(`${url}${sep}_t=${Date.now()}`, { cache: 'no-store' });
+                if (r2.ok) return await r2.text();
+            } catch (e) { /* bị CORS chặn */ }
+            throw new Error(`Không tải được ${url} (${proxyInfo})`);
+        }
+
+        // ===== QUÉT DỮ LIỆU =====
+        // silent = true: quét ngầm (tự động), không nhấp nháy "Đang quét..."
+        async function fetchSingleData(index, silent = false) {
+            const url = websites[index];
+            const prizeEl = document.getElementById(`prize-${index}`);
+            const ticketsEl = document.getElementById(`tickets-${index}`);
+            const timeEl = document.getElementById(`time-${index}`);
+            const myTicketsEl = document.getElementById(`mytickets-${index}`);
+            const winRateEl = document.getElementById(`winrate-${index}`);
+            const minDepEl = document.getElementById(`mindeposit-${index}`);
+            const codeEl = document.getElementById(`code-${index}`);
+
+            if (!prizeEl) return;
+            if (inFlight[index]) return; // đang quét rồi thì bỏ qua
+            inFlight[index] = true;
+
+            const allEls = [prizeEl, ticketsEl, timeEl, myTicketsEl, winRateEl, minDepEl, codeEl];
+            if (!silent) {
+                allEls.forEach(el => el.className = "stat-value status-loading");
+                timeEl.className = "stat-value countdown status-loading";
+                allEls.forEach(el => el.innerText = 'Đang quét...');
+            }
+
+            try {
+                const htmlText = await fetchPage(url);
+
+                let cleanText = htmlText.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ');
+                cleanText = cleanText.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ');
+                cleanText = decodeEntities(cleanText.replace(/<[^>]*>?/gm, ' '));
+                cleanText = normalizeDigits(cleanText.replace(/[ ​-‏]/g, ' ').replace(/\s+/g, ' '));
+                const foldText = foldAccents(cleanText); // bản không dấu, dùng cho Cost vé / mã code / vé tối đa
+
+                // 1. Giải & vé
+                const prizeMatch = cleanText.match(/\$\s*([0-9,]+)/) || cleanText.match(/prize.*?(?:pool)?.*?(?:is)?\s*([0-9,]+)/i);
+                const ticketsMatch = cleanText.match(/(\d{1,5})\s*\/\s*(\d{1,5})/);
+
+                // 1b. Nạp tối thiểu / mã code / số vé tối đa mỗi người (Step 2 & Step 3 của trang)
+                const minCost = findMinCost(foldText);
+                const promoCode = findPromoCode(foldText);
+                const maxTickets = findMaxTickets(foldText);
+
+                if (!minCost) {
+                    // Gợi ý debug: mở F12 > Console để xem đoạn chữ quanh chỗ "promo/código" của trang
+                    const pi = foldText.search(new RegExp(PROMO_WORDS, 'i'));
+                    console.warn('Không đọc được Cost vé:', url, pi >= 0 ? foldText.slice(Math.max(0, pi - 150), pi + 150) : '(không thấy từ promo/codigo trong trang)');
+                }
+
+                if (promoCode) promoCodes[index] = promoCode; else delete promoCodes[index];
+
+                // 2. Mốc thời gian kết thúc -> lưu lại để đồng hồ tự chạy mỗi giây
+                const dateMatch = htmlText.match(/data-giveaway-complete-date=["']([^"']+)["']/i);
+                const timeMatch = htmlText.match(/data-giveaway-complete-time=["']([^"']+)["']/i);
+
+                delete targetTimes[index];
+                timeStatus[index] = "Ẩn hoàn toàn";
+
+                if (dateMatch) {
+                    const dateStr = dateMatch[1];                       // vd "17.09.2026"
+                    const timeStr = timeMatch ? timeMatch[1] : "00:00"; // vd "23:55"
+                    const [day, month, year] = dateStr.split('.');
+                    const [hour, minute] = timeStr.split(':');
+
+                    if (day && month && year) {
+                        targetTimes[index] = new Date(year, parseInt(month) - 1, day, hour, minute).getTime();
+                        delete timeStatus[index];
+                    }
+                }
+
+                // 3. Vé của các nick
+                const nameInputRaw = document.getElementById('usernameInput').value || 'HZAHT';
+                const usernames = nameInputRaw.split(',').map(name => name.trim()).filter(name => name !== '');
+
+                let totalMyTicketsCount = 0;
+                let activeNicksCount = 0;
+                let ticketDetails = [];
+
+                usernames.forEach(uname => {
+                    const safeName = uname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const userRegex = new RegExp(safeName + "[^0-9a-zA-Z]{1,30}(\\d{1,5})", "i");
+                    const userMatch = cleanText.match(userRegex);
+
+                    if (userMatch) {
+                        const count = parseInt(userMatch[1]);
+                        totalMyTicketsCount += count;
+                        activeNicksCount++;
+                        ticketDetails.push({ name: uname, count });
+                    } else {
+                        ticketDetails.push({ name: uname, count: 0, missing: true });
+                    }
+                });
+
+                // 4. Tỉ lệ thắng
+                let totalParticipants = 0;
+                const tableRows = htmlText.match(/<tr\b[^>]*>/gi);
+                if (tableRows && tableRows.length > 1) {
+                    totalParticipants = tableRows.length - 1;
+                } else if (cleanText.match(/STEAM NICKNAME/i)) {
+                    const listPart = cleanText.split(/STEAM NICKNAME/i)[1];
+                    const validEntries = listPart.match(/(?<!\d)\d{1,5}(?!\d)/g);
+                    if (validEntries) totalParticipants = validEntries.length;
+                }
+
+                let winRate = "0.00%";
+                if (totalParticipants > 0 && activeNicksCount > 0) {
+                    winRate = ((activeNicksCount / totalParticipants) * 100).toFixed(2) + "%";
+                } else if (totalParticipants === 0 && activeNicksCount > 0) {
+                    winRate = "? (Lỗi đếm người)";
+                }
+
+                // Cập nhật DOM
+                allEls.forEach(el => el.className = "stat-value");
+                timeEl.className = "stat-value countdown";
+                prizeEl.innerText = prizeMatch ? "$" + prizeMatch[1] : "Không thấy";
+                ticketsEl.innerText = ticketsMatch ? `${ticketsMatch[1]} / ${ticketsMatch[2]}` : "Không thấy";
+                minDepEl.innerText = minCost || "Không thấy";
+                if (promoCode) {
+                    codeEl.innerHTML = `<span class="code-text">${promoCodes[index]}</span><button class="btn-copy" onclick="copyCode(${index}, this)">Copy</button>`;
+                } else {
+                    codeEl.innerText = "Không thấy";
+                }
+
+                const gaTotal = ticketsMatch ? ticketsMatch[2] : '?';
+                const ticketTableHtml = buildTicketTable(ticketDetails, totalMyTicketsCount, gaTotal, minCost, maxTickets);
+
+                if (totalMyTicketsCount > 0) {
+                    myTicketsEl.innerHTML = ticketTableHtml;
+                    if (totalParticipants > 0) {
+                        winRateEl.innerHTML = `${winRate} <span class="detail-text">(Tham gia ${activeNicksCount}/${totalParticipants} người)</span>`;
+                    } else {
+                        winRateEl.innerText = winRate;
+                    }
+                } else {
+                    myTicketsEl.innerHTML = ticketTableHtml;
+                    winRateEl.innerText = "0.00%";
+                }
+
+                lastUpdated[index] = Date.now();
+                tickCountdowns(); // vẽ lại đồng hồ ngay lập tức
+
+            } catch (error) {
+                console.warn(error);
+                if (silent && lastUpdated[index]) {
+                    // Quét ngầm lỗi: giữ nguyên dữ liệu cũ, chỉ cảnh báo nhỏ
+                    const upEl = document.getElementById(`updated-${index}`);
+                    if (upEl) { upEl.innerText = 'Quét lại thất bại (đang giữ dữ liệu cũ)'; upEl.classList.add('stale'); }
+                } else {
+                    allEls.forEach(el => el.className = "stat-value status-error");
+                    allEls.forEach(el => el.innerText = 'Lỗi kết nối');
+                }
+            } finally {
+                inFlight[index] = false;
+            }
+        }
+
+        function fetchAllData(silent = false) {
+            websites.forEach((url, index) => fetchSingleData(index, silent));
+            scheduleNext();
+        }
+
+        // ===== TỰ ĐỘNG QUÉT THEO CHU KỲ =====
+        function scheduleNext() {
+            clearTimeout(autoTimer);
+            const on = document.getElementById('autoToggle').checked;
+            document.getElementById('liveDot').classList.toggle('on', on);
+            if (!on) { nextRefreshAt = 0; return; }
+
+            const sec = parseInt(document.getElementById('intervalSelect').value);
+            nextRefreshAt = Date.now() + sec * 1000;
+            autoTimer = setTimeout(() => fetchAllData(true), sec * 1000);
+        }
+
+        function onAutoSettingChange() {
+            localStorage.setItem('giveaway_auto', document.getElementById('autoToggle').checked ? '1' : '0');
+            localStorage.setItem('giveaway_interval', document.getElementById('intervalSelect').value);
+            scheduleNext();
+            tickCountdowns();
+        }
+
+        // Quay lại tab -> quét ngay nếu dữ liệu đã cũ
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && document.getElementById('autoToggle').checked) {
+                const sec = parseInt(document.getElementById('intervalSelect').value);
+                const stale = websites.some((u, i) => !lastUpdated[i] || Date.now() - lastUpdated[i] > sec * 1000);
+                if (stale) fetchAllData(true);
+            }
+        });
+
+        window.onload = function () {
+            initInterface();
+            fetchAllData();                      // quét lần đầu (có hiển thị "Đang quét...")
+            setInterval(tickCountdowns, 1000);   // đồng hồ chạy mỗi giây
+        };
+    </script>
+</body>
+</html>
