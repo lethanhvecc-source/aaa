@@ -69,6 +69,9 @@
         .stat-value { font-size: 15px; font-weight: bold; color: #f8f8f2; text-align: right; }
         .countdown { font-variant-numeric: tabular-nums; font-family: Consolas, 'Courier New', monospace; }
         .countdown.urgent { color: #ff5555; }
+        .time-wrap { text-align: right; }
+        .days-line { font-size: 12px; color: #8be9fd; margin-top: 3px; font-weight: normal; }
+        .days-line.urgent { color: #ff5555; }
 
         .highlight-box { background-color: rgba(80, 250, 123, 0.1); border: 1px solid rgba(80, 250, 123, 0.3); }
         .highlight-label { color: #50fa7b; font-weight: bold; }
@@ -100,6 +103,9 @@
         .btn-refresh:hover { background-color: #40c563; }
         .btn-link { background-color: #bd93f9; color: #fff; }
         .btn-link:hover { background-color: #a370f7; }
+
+        .diag { width: 100%; max-width: 800px; margin: 0 0 20px; padding: 14px; background: #1e1e2f; border: 1px solid #3d3d5c; border-radius: 10px; color: #f8f8f2; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .diag[hidden] { display: none; }
 
         /* Điện thoại: thu gọn lề, ô nhập full chiều ngang, không bị tràn ngang */
         @media (max-width: 480px) {
@@ -142,8 +148,10 @@
         </select>
         <span class="live-label" id="nextRefreshLabel">---</span>
         <button class="btn-main btn-update-all" onclick="fetchAllData()">🔄 Cập nhật tất cả</button>
+        <button class="btn-main" style="background:#8be9fd;" onclick="runDiagnostics()">🩺 Chẩn đoán</button>
     </div>
 
+    <pre class="diag" id="diagBox" hidden></pre>
     <div class="container" id="tracker-container"></div>
 
     <script>
@@ -373,7 +381,10 @@
                             </div>
                             <div class="stat-box">
                                 <span class="stat-label">⏳ Thời gian còn lại (realtime)</span>
-                                <span class="stat-value countdown" id="time-${index}">---</span>
+                                <div class="time-wrap">
+                                    <span class="stat-value countdown" id="time-${index}">---</span>
+                                    <div class="days-line countdown" id="days-${index}"></div>
+                                </div>
                             </div>
                             <div class="stat-box highlight-box stat-box-col">
                                 <span class="stat-label highlight-label">👤 VÉ CỦA BẠN (đã vào / tổng vé GA)</span>
@@ -404,14 +415,28 @@
             return `${totalH}H ${pad(m)}M ${pad(s)}S`;
         }
 
+        // Quy đổi sang "XD YYH ZZM WWS" (từ cùng số mili-giây còn lại)
+        function formatDays(diff) {
+            const totalS = Math.floor(diff / 1000);
+            const d = Math.floor(totalS / 86400);
+            const h = Math.floor((totalS % 86400) / 3600);
+            const m = Math.floor((totalS % 3600) / 60);
+            const sec = totalS % 60;
+            return `= ${d}D ${pad(h)}H ${pad(m)}M ${pad(sec)}S`;
+        }
+
         // ===== ĐỒNG HỒ ĐẾM NGƯỢC: chạy mỗi giây, không cần gọi lại trang =====
         function tickCountdowns() {
             const now = Date.now();
             websites.forEach((url, index) => {
                 const el = document.getElementById(`time-${index}`);
                 if (!el) return;
-                // Đang quét thì để nguyên chữ "Đang quét..."
-                if (el.classList.contains('status-loading') || el.classList.contains('status-error')) return;
+                const daysEl = document.getElementById(`days-${index}`);
+                // Đang quét / lỗi thì để nguyên chữ trạng thái và ẩn dòng ngày
+                if (el.classList.contains('status-loading') || el.classList.contains('status-error')) {
+                    if (daysEl) daysEl.innerText = '';
+                    return;
+                }
 
                 const target = targetTimes[index];
                 if (target) {
@@ -419,12 +444,18 @@
                     if (diff > 0) {
                         el.innerText = formatRemaining(diff);
                         el.classList.toggle('urgent', diff < 3600000); // dưới 1 giờ thì đỏ
+                        if (daysEl) {
+                            daysEl.innerText = formatDays(diff);
+                            daysEl.classList.toggle('urgent', diff < 3600000);
+                        }
                     } else {
                         el.innerText = "Đã kết thúc";
                         el.classList.remove('urgent');
+                        if (daysEl) daysEl.innerText = '';
                     }
                 } else if (timeStatus[index]) {
                     el.innerText = timeStatus[index];
+                    if (daysEl) daysEl.innerText = '';
                 }
 
                 // Hiển thị "cập nhật X giây trước"
@@ -449,23 +480,69 @@
         }
 
         // ===== TẢI TRANG GIVEAWAY =====
-        // Ưu tiên đi qua proxy của Netlify (/api/fetch) để không bị chặn CORS.
-        // Nếu proxy không có (vd mở file ở máy) thì thử fetch trực tiếp (cần extension Allow CORS).
+        // Đi qua proxy của Netlify (/api/fetch) để không bị chặn CORS.
+        // Chỉ khi không gọi được proxy (vd mở file ở máy) mới thử fetch trực tiếp (cần extension Allow CORS).
         async function fetchPage(url) {
-            let proxyInfo = '';
             try {
                 const r = await fetch(`/api/fetch?url=${encodeURIComponent(url)}&_t=${Date.now()}`, { cache: 'no-store' });
                 if (r.ok) return await r.text();
-                proxyInfo = `proxy trả về ${r.status}`;
+                let detail = '';
+                try { detail = (await r.clone().json()).error || ''; } catch (e) {}
+                if (r.status === 404) throw new Error('Proxy 404: hàm /api/fetch chưa được deploy (cần deploy qua GitHub hoặc Netlify CLI, kéo-thả không chạy hàm)');
+                throw new Error(`Proxy ${r.status}${detail ? ': ' + detail : ''}`);
             } catch (e) {
-                proxyInfo = 'không gọi được proxy';
+                if (e && /^Proxy /.test(e.message)) throw e; // proxy đã trả lời lỗi -> báo luôn lý do
             }
+            // Không gọi được proxy: thử trực tiếp
             try {
                 const sep = url.includes('?') ? '&' : '?';
                 const r2 = await fetch(`${url}${sep}_t=${Date.now()}`, { cache: 'no-store' });
                 if (r2.ok) return await r2.text();
-            } catch (e) { /* bị CORS chặn */ }
-            throw new Error(`Không tải được ${url} (${proxyInfo})`);
+                throw new Error(`Trang trả về ${r2.status}`);
+            } catch (e) {
+                throw new Error('Không gọi được proxy và fetch trực tiếp bị CORS chặn');
+            }
+        }
+
+        // ===== CHẨN ĐOÁN (xem lỗi ngay trên điện thoại, không cần F12) =====
+        async function runDiagnostics() {
+            const box = document.getElementById('diagBox');
+            box.hidden = false;
+            const lines = ['Đang kiểm tra...'];
+            const out = () => { box.textContent = lines.join('\n'); };
+            out();
+
+            try {
+                const r = await fetch('/api/fetch', { cache: 'no-store' });
+                const txt = (await r.text()).slice(0, 120);
+                if (r.status === 400 && txt.includes('url')) lines.push('✅ Proxy /api/fetch đang chạy.');
+                else if (r.status === 404) lines.push('❌ Proxy 404: hàm chưa được deploy. Cần deploy qua GitHub hoặc Netlify CLI (kéo-thả không chạy hàm).');
+                else lines.push(`⚠️ Proxy trả về ${r.status}: ${txt}`);
+            } catch (e) {
+                lines.push('❌ Không gọi được /api/fetch (đang mở file ở máy hoặc mất mạng).');
+            }
+            out();
+
+            for (const url of websites) {
+                const t0 = performance.now();
+                try {
+                    const r = await fetch(`/api/fetch?url=${encodeURIComponent(url)}&_t=${Date.now()}`, { cache: 'no-store' });
+                    const ms = Math.round(performance.now() - t0);
+                    if (r.ok) {
+                        const body = await r.text();
+                        lines.push(`✅ ${url}\n    OK (${Math.round(body.length / 1024)} KB, ${ms} ms)`);
+                    } else {
+                        let d = '';
+                        try { d = (await r.json()).error || ''; } catch (e) {}
+                        lines.push(`❌ ${url}\n    ${r.status} ${d}`);
+                    }
+                } catch (e) {
+                    lines.push(`❌ ${url}\n    lỗi mạng`);
+                }
+                out();
+            }
+            lines.push('Xong. Nếu vẫn lỗi, chụp màn hình khung này gửi lại cho Claude.');
+            out();
         }
 
         // ===== QUÉT DỮ LIỆU =====
@@ -612,10 +689,12 @@
                 if (silent && lastUpdated[index]) {
                     // Quét ngầm lỗi: giữ nguyên dữ liệu cũ, chỉ cảnh báo nhỏ
                     const upEl = document.getElementById(`updated-${index}`);
-                    if (upEl) { upEl.innerText = 'Quét lại thất bại (đang giữ dữ liệu cũ)'; upEl.classList.add('stale'); }
+                    if (upEl) { upEl.innerText = 'Quét lại thất bại (đang giữ dữ liệu cũ): ' + error.message; upEl.classList.add('stale'); }
                 } else {
                     allEls.forEach(el => el.className = "stat-value status-error");
                     allEls.forEach(el => el.innerText = 'Lỗi kết nối');
+                    const upEl2 = document.getElementById(`updated-${index}`);
+                    if (upEl2) { upEl2.innerText = error.message; upEl2.classList.add('stale'); }
                 }
             } finally {
                 inFlight[index] = false;
